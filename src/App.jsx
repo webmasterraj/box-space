@@ -209,6 +209,12 @@ function App() {
     return div.querySelector('img') !== null
   }
 
+  const hasVideo = (content) => {
+    const div = document.createElement('div')
+    div.innerHTML = content
+    return div.querySelector('.youtube-card') !== null
+  }
+
   // Reset highlighted note when sidebar closes
   useEffect(() => {
     if (!sidebarOpen) {
@@ -333,6 +339,41 @@ function App() {
     return loader
   }
 
+  const getYouTubeVideoId = (url) => {
+    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+    const match = url.match(regExp)
+    return match && match[2].length === 11 ? match[2] : null
+  }
+
+  const createYouTubeEmbed = (url) => {
+    const videoId = getYouTubeVideoId(url)
+    if (!videoId) return null
+
+    const container = document.createElement('div')
+    container.className = 'youtube-container'
+    container.contentEditable = false
+    
+    container.innerHTML = `
+      <iframe 
+        class="youtube-embed"
+        src="https://www.youtube.com/embed/${videoId}?rel=0"
+        title="YouTube video player"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+      <button class="youtube-card-close" aria-label="Remove embed">✕</button>
+    `
+
+    // Add close button handler
+    const closeButton = container.querySelector('.youtube-card-close')
+    closeButton.addEventListener('click', () => {
+      container.remove()
+    })
+
+    return container
+  }
+
   const handlePaste = async (e) => {
     e.preventDefault()
     const items = e.clipboardData.items
@@ -360,6 +401,25 @@ function App() {
       }
       else if (item.type === 'text/plain') {
         pastedText = await new Promise(resolve => item.getAsString(resolve))
+        
+        // Check if it's a YouTube URL
+        if (getYouTubeVideoId(pastedText)) {
+          const selection = window.getSelection()
+          const range = selection.getRangeAt(0)
+          
+          const embed = createYouTubeEmbed(pastedText)
+          range.deleteContents()
+          range.insertNode(embed)
+          
+          // Add a line break after the embed
+          const br = document.createElement('br')
+          range.setStartAfter(embed)
+          range.insertNode(br)
+          range.setStartAfter(br)
+          selection.removeAllRanges()
+          selection.addRange(range)
+          return
+        }
         
         // Check if the pasted text is a URL
         const urlRegex = /https?:\/\/[^\s]+/g
@@ -494,6 +554,12 @@ function App() {
                       <polyline points="21 15 16 10 5 21"/>
                     </svg>
                   )}
+                  {hasVideo(note.content) && (
+                    <svg className="video-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="4" width="20" height="16" rx="2" ry="2"/>
+                      <path d="M10 9l5 3-5 3z"/>
+                    </svg>
+                  )}
                   <span>{getFirstLine(note.content)}</span>
                 </div>
                 {note.tags && note.tags.length > 0 && (
@@ -512,7 +578,7 @@ function App() {
                 }}
                 aria-label="Delete note"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
               </button>
