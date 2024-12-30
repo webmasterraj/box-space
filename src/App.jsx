@@ -59,7 +59,9 @@ function App() {
   const [selectedNoteId, setSelectedNoteId] = useState(null)
   const [highlightedNoteIndex, setHighlightedNoteIndex] = useState(0)
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+  const [linkPopup, setLinkPopup] = useState({ show: false, x: 0, y: 0, link: null })
   const editorRef = useRef(null)
+  const linkInputRef = useRef(null)
 
   useEffect(() => {
     if (selectedNoteId) {
@@ -75,88 +77,77 @@ function App() {
     localStorage.setItem('notes', JSON.stringify(notes))
   }, [notes])
 
-  const extractTags = (text) => {
-    const tagRegex = /#(\w+)/g
-    const tags = []
-    let match
-
-    while ((match = tagRegex.exec(text)) !== null) {
-      tags.push(match[1].toLowerCase())
+  const insertLink = () => {
+    const selection = window.getSelection()
+    if (selection.toString()) {
+      const url = 'https://'
+      document.execCommand('createLink', false, url)
+      
+      // Find the newly created link
+      const range = selection.getRangeAt(0)
+      const link = range.startContainer.parentElement
+      if (link.tagName === 'A') {
+        // Select the URL for easy editing
+        const urlRange = document.createRange()
+        urlRange.selectNodeContents(link)
+        selection.removeAllRanges()
+        selection.addRange(urlRange)
+      }
     }
-
-    return [...new Set(tags)]
   }
 
-  const removeHashtags = (content) => {
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = content
-
-    const processTextNode = (node) => {
-      node.textContent = node.textContent.replace(/#\w+/g, '').replace(/\s+/g, ' ').trim()
-    }
-
-    const walk = document.createTreeWalker(
-      tempDiv,
-      NodeFilter.SHOW_TEXT,
-      null,
-      false
-    )
-
-    let node
-    while ((node = walk.nextNode())) {
-      processTextNode(node)
-    }
-
-    return tempDiv.innerHTML
+  const insertBold = () => {
+    document.execCommand('bold', false, null)
   }
 
-  const handlePaste = async (e) => {
-    e.preventDefault()
-    const items = e.clipboardData.items
-    let pastedText = ''
+  const insertItalic = () => {
+    document.execCommand('italic', false, null)
+  }
 
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile()
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          const img = document.createElement('img')
-          img.src = event.target.result
-          img.className = 'editor-image'
-          
-          const selection = window.getSelection()
-          const range = selection.getRangeAt(0)
-          range.insertNode(img)
-          
-          range.setStartAfter(img)
-          range.setEndAfter(img)
-          selection.removeAllRanges()
-          selection.addRange(range)
+  const insertUnderline = () => {
+    document.execCommand('underline', false, null)
+  }
+
+  // Add keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        switch (e.key) {
+          case 'k':
+            e.preventDefault()
+            insertLink()
+            break
+          case 'b':
+            e.preventDefault()
+            insertBold()
+            break
+          case 'i':
+            e.preventDefault()
+            insertItalic()
+            break
+          case 'u':
+            e.preventDefault()
+            insertUnderline()
+            break
+          default:
+            break
         }
-        reader.readAsDataURL(file)
-      }
-      else if (item.type === 'text/plain') {
-        pastedText = await new Promise(resolve => item.getAsString(resolve))
-        document.execCommand('insertText', false, pastedText)
       }
     }
-  }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const addNote = () => {
     const editorContent = editorRef.current.innerHTML
-    const textContent = editorRef.current.textContent
-    
-    if (!editorContent.trim()) return
-
-    const cleanedContent = removeHashtags(editorContent)
-    const tags = extractTags(textContent)
+    if (!editorRef.current.textContent.trim()) return
 
     const noteData = {
       id: selectedNoteId || Date.now(),
       timestamp: new Date().toLocaleString(),
-      type: 'rich',
-      content: cleanedContent,
-      tags: tags
+      content: editorContent,
+      tags: extractTags(editorRef.current.textContent)
     }
 
     if (selectedNoteId) {
@@ -194,6 +185,28 @@ function App() {
     tempDiv.innerHTML = content
     const text = tempDiv.textContent || ''
     return text.length > 60 ? text.substring(0, 60) + '...' : text
+  }
+
+  const getFirstLine = (content) => {
+    const div = document.createElement('div')
+    div.innerHTML = content
+    
+    // Get only text nodes and links, ignore other HTML elements
+    const textContent = Array.from(div.childNodes)
+      .filter(node => node.nodeType === Node.TEXT_NODE || 
+        (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A'))
+      .map(node => node.textContent)
+      .join('')
+      .trim()
+    
+    const firstLine = textContent.split('\n')[0].trim()
+    return firstLine || 'Empty note'
+  }
+
+  const hasImage = (content) => {
+    const div = document.createElement('div')
+    div.innerHTML = content
+    return div.querySelector('img') !== null
   }
 
   // Reset highlighted note when sidebar closes
@@ -239,6 +252,205 @@ function App() {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
+  // Close link popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (linkPopup.show && !e.target.closest('.link-popup')) {
+        setLinkPopup({ show: false, x: 0, y: 0, link: null })
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [linkPopup.show])
+
+  // Focus link input when popup opens
+  useEffect(() => {
+    if (linkPopup.show && linkInputRef.current) {
+      linkInputRef.current.focus()
+      linkInputRef.current.select()
+    }
+  }, [linkPopup.show])
+
+  const handleLinkClick = (e) => {
+    if (e.target.tagName === 'A') {
+      e.preventDefault()
+      const rect = e.target.getBoundingClientRect()
+      setLinkPopup({
+        show: true,
+        x: rect.left,
+        y: rect.bottom + 5,
+        link: e.target
+      })
+    }
+  }
+
+  const updateLink = (newUrl) => {
+    if (linkPopup.link) {
+      linkPopup.link.href = newUrl
+      setLinkPopup({ show: false, x: 0, y: 0, link: null })
+    }
+  }
+
+  const removeLink = () => {
+    if (linkPopup.link) {
+      const text = linkPopup.link.textContent
+      const textNode = document.createTextNode(text)
+      linkPopup.link.parentNode.replaceChild(textNode, linkPopup.link)
+      setLinkPopup({ show: false, x: 0, y: 0, link: null })
+    }
+  }
+
+  const createLinkCard = (metadata) => {
+    console.log('Creating link card with metadata:', metadata)
+    const card = document.createElement('div')
+    card.className = 'link-card'
+    
+    // Create the inner HTML with null checks and no extra whitespace
+    const imageHtml = metadata.image ? 
+      `<div class="link-card-image"><img src="${metadata.image}" alt="" loading="lazy" /></div>` : ''
+    
+    const faviconHtml = metadata.favicon ? 
+      `<img src="${metadata.favicon}" alt="" class="link-card-favicon" />` : ''
+    
+    card.innerHTML = `<button class="link-card-close" aria-label="Remove embed"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button><a href="${metadata.url}" target="_blank" rel="noopener noreferrer">${imageHtml}<div class="link-card-content"><div class="link-card-title">${faviconHtml}<span>${metadata.title || 'Untitled'}</span></div><div class="link-card-site">${metadata.siteName || new URL(metadata.url).hostname}</div></div></a>`
+
+    // Add close button handler
+    const closeButton = card.querySelector('.link-card-close')
+    closeButton.addEventListener('click', () => {
+      card.remove()
+    })
+
+    return card
+  }
+
+  const createLoadingIndicator = () => {
+    const loader = document.createElement('div')
+    loader.className = 'loading-indicator'
+    loader.innerHTML = `
+      <div class="loading-spinner"></div>
+      <span>Fetching link details...</span>
+    `
+    return loader
+  }
+
+  const handlePaste = async (e) => {
+    e.preventDefault()
+    const items = e.clipboardData.items
+    let pastedText = ''
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          const img = document.createElement('img')
+          img.src = event.target.result
+          img.className = 'editor-image'
+          
+          const selection = window.getSelection()
+          const range = selection.getRangeAt(0)
+          range.insertNode(img)
+          
+          range.setStartAfter(img)
+          range.setEndAfter(img)
+          selection.removeAllRanges()
+          selection.addRange(range)
+        }
+        reader.readAsDataURL(file)
+      }
+      else if (item.type === 'text/plain') {
+        pastedText = await new Promise(resolve => item.getAsString(resolve))
+        
+        // Check if the pasted text is a URL
+        const urlRegex = /https?:\/\/[^\s]+/g
+        if (urlRegex.test(pastedText)) {
+          const selection = window.getSelection()
+          const range = selection.getRangeAt(0)
+          
+          // Insert temporary loading indicator
+          const loader = createLoadingIndicator()
+          range.deleteContents()
+          range.insertNode(loader)
+          
+          try {
+            console.log('Fetching metadata for URL:', pastedText)
+            const response = await fetch('http://localhost:3001/api/fetch-metadata', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ url: pastedText }),
+            })
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`)
+            }
+            
+            const metadata = await response.json()
+            console.log('Received metadata:', metadata)
+            
+            // Remove loader
+            loader.remove()
+            
+            // Insert title as link
+            const link = document.createElement('a')
+            link.href = pastedText
+            link.textContent = metadata.title || pastedText
+            range.insertNode(link)
+            
+            // Add a line break
+            const br1 = document.createElement('br')
+            range.setStartAfter(link)
+            range.insertNode(br1)
+            
+            // Add the embed card
+            const card = createLinkCard(metadata)
+            range.setStartAfter(br1)
+            range.insertNode(card)
+            
+            // Add another line break and position cursor
+            const br2 = document.createElement('br')
+            range.setStartAfter(card)
+            range.insertNode(br2)
+            range.setStartAfter(br2)
+            
+            // Update selection
+            selection.removeAllRanges()
+            selection.addRange(range)
+          } catch (error) {
+            console.error('Error handling URL paste:', error)
+            loader.remove()
+            
+            // Just insert the URL as a link
+            const link = document.createElement('a')
+            link.href = pastedText
+            link.textContent = pastedText
+            range.insertNode(link)
+            
+            // Move cursor after the link
+            range.setStartAfter(link)
+            selection.removeAllRanges()
+            selection.addRange(range)
+          }
+        } else {
+          document.execCommand('insertText', false, pastedText)
+        }
+      }
+    }
+  }
+
+  const extractTags = (text) => {
+    const tagRegex = /#(\w+)/g
+    const tags = []
+    let match
+
+    while ((match = tagRegex.exec(text)) !== null) {
+      tags.push(match[1].toLowerCase())
+    }
+
+    return [...new Set(tags)]
+  }
+
   // Register keyboard shortcuts
   useKeyboardShortcuts({
     onSave: () => {
@@ -267,37 +479,43 @@ function App() {
 
       <div className={'sidebar ' + (sidebarOpen ? 'open' : '')}>
         <div className="sidebar-notes">
-          {notes.map((note, index) => (
+          {notes.map((note) => (
             <div 
               key={note.id} 
-              className={'sidebar-note ' + (selectedNoteId === note.id ? 'selected' : '') + (index === highlightedNoteIndex ? ' highlighted' : '')}
+              className={`sidebar-note ${selectedNoteId === note.id ? 'selected' : ''}`}
+              onClick={() => selectNote(note.id)}
             >
-              <button
-                className={'delete-btn' + (deleteConfirmId === note.id ? ' confirm' : '')}
+              <div className="sidebar-note-preview">
+                <div className="sidebar-note-first-line">
+                  {hasImage(note.content) && (
+                    <svg className="image-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  )}
+                  <span>{getFirstLine(note.content)}</span>
+                </div>
+                {note.tags && note.tags.length > 0 && (
+                  <div className="sidebar-note-tags">
+                    {note.tags.map((tag, index) => (
+                      <span key={index} className="tag">#{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button 
+                className="delete-note" 
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (deleteConfirmId === note.id) {
-                    deleteNote(note.id)
-                    setDeleteConfirmId(null)
-                  } else {
-                    setDeleteConfirmId(note.id)
-                  }
+                  deleteNote(note.id)
                 }}
-                title={deleteConfirmId === note.id ? 'Click to confirm delete' : 'Delete note'}
+                aria-label="Delete note"
               >
-                {deleteConfirmId === note.id ? '✓' : '×'}
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
               </button>
-              <div onClick={() => selectNote(note.id)}>
-                <div className="sidebar-note-content">
-                  {getNoteSummary(note.content)}
-                </div>
-                <div className="sidebar-note-tags">
-                  {note.tags.map(tag => '#' + tag).join(' ')}
-                </div>
-                <div className="sidebar-note-timestamp">
-                  {note.timestamp}
-                </div>
-              </div>
             </div>
           ))}
         </div>
@@ -311,9 +529,20 @@ function App() {
             contentEditable
             onPaste={handlePaste}
             onInput={(e) => setCurrentNote(e.target.textContent)}
-            placeholder="Type or paste content here. Add tags with # (e.g., #work). Press ⌘↵ to save."
+            onClick={handleLinkClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Tab') {
+                e.preventDefault()
+                document.execCommand('insertText', false, '  ')
+              }
+              else if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                document.execCommand('insertLineBreak')
+              }
+            }}
+            placeholder="Type or paste content here. Add tags with # (e.g., #work). Press ⌘↵ to save, ⌘K for links."
             role="textbox"
             aria-multiline="true"
+            dangerouslySetInnerHTML={selectedNoteId ? undefined : { __html: '' }}
           />
           <div className="note-actions">
             <button onClick={addNote} className="save-btn">
@@ -323,6 +552,36 @@ function App() {
               Clear
             </button>
           </div>
+          {linkPopup.show && (
+            <div 
+              className="link-popup"
+              style={{ 
+                position: 'fixed',
+                left: `${linkPopup.x}px`,
+                top: `${linkPopup.y}px`
+              }}
+            >
+              <input
+                ref={linkInputRef}
+                type="text"
+                defaultValue={linkPopup.link?.href || ''}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateLink(e.target.value)
+                  } else if (e.key === 'Escape') {
+                    setLinkPopup({ show: false, x: 0, y: 0, link: null })
+                  }
+                }}
+                placeholder="Enter URL"
+              />
+              <button onClick={() => updateLink(linkInputRef.current.value)}>
+                Update
+              </button>
+              <button onClick={removeLink} className="remove-link">
+                Remove
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
