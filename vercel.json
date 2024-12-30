@@ -19,12 +19,11 @@
       "dest": "server.js"
     },
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/dist/$1",
-      "headers": {
-        "cache-control": "public, max-age=0, must-revalidate",
-        "content-type": "application/javascript; charset=utf-8"
-      }
+      "dest": "/index.html"
     }
   ]
 }
