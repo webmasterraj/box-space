@@ -215,10 +215,12 @@
   color: #ffffff;
 }
 
-.rich-editor:empty:before {
+.rich-editor[placeholder]:empty:before {
   content: attr(placeholder);
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.3);
+  white-space: pre-line;
   pointer-events: none;
+  position: absolute;
 }
 
 .rich-editor b,

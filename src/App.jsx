@@ -374,7 +374,7 @@ function App() {
           
           try {
             console.log('Fetching metadata for URL:', pastedText)
-            const response = await fetch('http://localhost:3001/api/fetch-metadata', {
+            const response = await fetch('/api/fetch-metadata', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -539,7 +539,14 @@ function App() {
                 document.execCommand('insertLineBreak')
               }
             }}
-            placeholder="Type or paste content here. Add tags with # (e.g., #work). Press ⌘↵ to save, ⌘K for links."
+            placeholder={`Type or paste content here. Add tags with # (e.g. #work)
+
+Pasted URLs become readable links and embed cards. 
+
+⌘/ to open saved notes
+
+⌘↵ to save
+`}
             role="textbox"
             aria-multiline="true"
             dangerouslySetInnerHTML={selectedNoteId ? undefined : { __html: '' }}
