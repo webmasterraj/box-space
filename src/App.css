@@ -1,0 +1,269 @@
+:root {
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #ffffff;
+  background-color: #1a1a1a;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.app-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  font-family: inherit;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: transform 0.3s ease;
+  font-family: inherit;
+}
+
+.sidebar-toggle:hover {
+  background-color: #535bf2;
+}
+
+.sidebar-toggle.open {
+  transform: translateX(250px);
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -300px;
+  width: 300px;
+  height: 100vh;
+  background-color: #1a1a1a;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.3s ease;
+  z-index: 100;
+  overflow-y: auto;
+  font-family: inherit;
+}
+
+.sidebar.open {
+  transform: translateX(300px);
+}
+
+.sidebar-notes {
+  padding: 60px 20px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sidebar-note {
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  line-height: 1;
+}
+
+.delete-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.delete-btn.confirm {
+  background-color: #646cff;
+  color: #ffffff;
+}
+
+.delete-btn.confirm:hover {
+  background-color: #535bf2;
+}
+
+.sidebar-note:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-note.highlighted {
+  background-color: rgba(100, 108, 255, 0.2);
+  border-left: 3px solid #646cff;
+}
+
+.sidebar-note.selected {
+  background-color: rgba(100, 108, 255, 0.3);
+  border-left: 3px solid #535bf2;
+}
+
+.sidebar-note-content {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+}
+
+.sidebar-note-tags {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.25rem;
+}
+
+.sidebar-note-timestamp {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+/* Main Content */
+.main-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  transition: margin-left 0.3s ease;
+}
+
+.sidebar.open + .main-content {
+  margin-left: 300px;
+}
+
+.note-input {
+  width: 100%;
+  max-width: 800px;
+  border: 4px dashed #646cff;
+  border-radius: 12px;
+  padding: 2rem;
+  position: relative;
+}
+
+.rich-editor {
+  width: 100%;
+  min-height: 150px;
+  padding: 1rem;
+  border: none;
+  font-size: 1rem;
+  line-height: 1.5;
+  outline: none;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: text;
+  margin-bottom: 1rem;
+  font-family: inherit;
+  color: #ffffff;
+}
+
+.rich-editor:empty:before {
+  content: attr(placeholder);
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.note-actions {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.note-input:hover .note-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.save-btn,
+.clear-btn {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  font-family: inherit;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.save-btn:hover,
+.clear-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.save-btn {
+  background-color: rgba(100, 108, 255, 0.3);
+}
+
+.save-btn:hover {
+  background-color: rgba(100, 108, 255, 0.4);
+}
+
+.editor-image {
+  max-width: 300px;
+  max-height: 200px;
+  display: inline-block;
+  margin: 4px;
+  vertical-align: bottom;
+  border-radius: 4px;
+}
+
+/* Tag styles */
+.note-tag {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
+  display: inline-block;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.note-tag:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
