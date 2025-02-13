@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
+import TransferModal from './components/TransferModal'
 
 // Custom hook for keyboard shortcuts
 function useKeyboardShortcuts({ 
@@ -60,6 +61,7 @@ function App() {
   const [highlightedNoteIndex, setHighlightedNoteIndex] = useState(0)
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [linkPopup, setLinkPopup] = useState({ show: false, x: 0, y: 0, link: null })
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
   const editorRef = useRef(null)
   const linkInputRef = useRef(null)
 
@@ -526,24 +528,46 @@ function App() {
     hasNotes: notes.length > 0
   })
 
+  const loadNote = (note) => {
+    setSelectedNoteId(note.id)
+    editorRef.current.innerHTML = note.content
+    setCurrentNote(editorRef.current.textContent)
+  }
+
   return (
     <div className="app-container">
       <button 
-        className={'sidebar-toggle ' + (sidebarOpen ? 'open' : '')}
-        onClick={() => setSidebarOpen(prev => !prev)}
-        aria-label={sidebarOpen ? 'Close sidebar (⌘/)' : 'Open sidebar (⌘/)'}
-        title={sidebarOpen ? 'Close sidebar (⌘/)' : 'Open sidebar (⌘/)'}
+        className="floating-transfer-btn"
+        onClick={() => setIsTransferModalOpen(true)}
       >
-        {sidebarOpen ? '←' : '→'}
+        Transfers
       </button>
 
-      <div className={'sidebar ' + (sidebarOpen ? 'open' : '')}>
+      <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <button 
+            className="toggle-btn" 
+            onClick={() => setSidebarOpen(prev => !prev)}
+            aria-label={sidebarOpen ? 'Close sidebar (⌘/)' : 'Open sidebar (⌘/)'}
+            title={sidebarOpen ? 'Close sidebar (⌘/)' : 'Open sidebar (⌘/)'}
+          >
+            {sidebarOpen ? '←' : '→'}
+          </button>
+          <div className="action-buttons">
+            <button className="transfer-btn" onClick={() => setIsTransferModalOpen(true)}>
+              Transfers
+            </button>
+          </div>
+        </div>
+
         <div className="sidebar-notes">
           {notes.map((note) => (
             <div 
-              key={note.id} 
-              className={`sidebar-note ${selectedNoteId === note.id ? 'selected' : ''}`}
-              onClick={() => selectNote(note.id)}
+              key={note.id}
+              className={`sidebar-note ${selectedNoteId === note.id ? 'selected' : ''} ${
+                highlightedNoteIndex === notes.indexOf(note) ? 'highlighted' : ''
+              }`}
+              onClick={() => loadNote(note)}
             >
               <div className="sidebar-note-preview">
                 <div className="sidebar-note-first-line">
@@ -587,76 +611,53 @@ function App() {
         </div>
       </div>
 
-      <div className="main-content">
-        <div className="note-input">
-          <div
-            ref={editorRef}
-            className="rich-editor"
-            contentEditable
-            onPaste={handlePaste}
-            onInput={(e) => setCurrentNote(e.target.textContent)}
-            onClick={handleLinkClick}
-            onKeyDown={(e) => {
-              if (e.key === 'Tab') {
-                e.preventDefault()
-                document.execCommand('insertText', false, '  ')
-              }
-              else if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-                document.execCommand('insertLineBreak')
-              }
-            }}
-            placeholder={`Type or paste content here. Add tags with # (e.g. #work)
+      <div className="editor-container">
+        <div
+          ref={editorRef}
+          className="rich-editor"
+          contentEditable
+          onPaste={handlePaste}
+          onInput={(e) => setCurrentNote(e.target.textContent)}
+          onClick={handleLinkClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Tab') {
+              e.preventDefault()
+              document.execCommand('insertText', false, '  ')
+            }
+          }}
+          placeholder="Type or paste content here. Add tags with # (e.g. #work)
 
-Pasted URLs become readable links and embed cards. 
+Pasted URLs become readable links and embed cards.
 
 ⌘/ to open saved notes
-
-⌘↵ to save
-`}
-            role="textbox"
-            aria-multiline="true"
-            dangerouslySetInnerHTML={selectedNoteId ? undefined : { __html: '' }}
-          />
-          <div className="note-actions">
-            <button onClick={addNote} className="save-btn">
-              {selectedNoteId ? 'Update' : 'Save'}
-            </button>
-            <button onClick={clearCurrentNote} className="clear-btn">
-              Clear
-            </button>
-          </div>
-          {linkPopup.show && (
-            <div 
-              className="link-popup"
-              style={{ 
-                position: 'fixed',
-                left: `${linkPopup.x}px`,
-                top: `${linkPopup.y}px`
-              }}
-            >
-              <input
-                ref={linkInputRef}
-                type="text"
-                defaultValue={linkPopup.link?.href || ''}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    updateLink(e.target.value)
-                  } else if (e.key === 'Escape') {
-                    setLinkPopup({ show: false, x: 0, y: 0, link: null })
-                  }
-                }}
-                placeholder="Enter URL"
-              />
-              <button onClick={() => updateLink(linkInputRef.current.value)}>
-                Update
-              </button>
-              <button onClick={removeLink} className="remove-link">
-                Remove
-              </button>
-            </div>
-          )}
+⌘s to save"
+          dangerouslySetInnerHTML={selectedNoteId ? undefined : { __html: '' }}
+        />
+        <div className="note-actions">
+          <button onClick={addNote} className="save-btn">
+            {selectedNoteId ? 'Update' : 'Save'}
+          </button>
+          <button onClick={clearCurrentNote} className="clear-btn">
+            Clear
+          </button>
         </div>
       </div>
+
+      {linkPopup.show && (
+        <div 
+          className="link-popup"
+          style={{ top: linkPopup.y, left: linkPopup.x }}
+        >
+          <a href={linkPopup.link} target="_blank" rel="noopener noreferrer">
+            {linkPopup.link}
+          </a>
+        </div>
+      )}
+
+      <TransferModal 
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+      />
     </div>
   )
 }

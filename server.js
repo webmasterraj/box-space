@@ -7,27 +7,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Function to extract meaningful title from URL
-const getTitleFromUrl = (url) => {
-  try {
-    const urlObj = new URL(url);
-    
-    // Special handling for known sites
-    if (urlObj.hostname.includes('zillow.com')) {
-      const pathParts = urlObj.pathname.split('/').filter(Boolean);
-      if (pathParts[0] === 'homedetails') {
-        const address = pathParts[1].replace(/-/g, ' ');
-        return `Zillow: ${address}`;
-      }
-    }
-    
-    // Default to hostname
-    return urlObj.hostname.replace(/^www\./, '');
-  } catch (error) {
-    return url;
-  }
-};
-
 app.post('/api/fetch-metadata', async (req, res) => {
   const { url } = req.body;
   console.log('Fetching metadata for:', url);
@@ -50,7 +29,7 @@ app.post('/api/fetch-metadata', async (req, res) => {
       url,
       title: $('meta[property="og:title"]').attr('content') || 
              $('title').text().trim() || 
-             getTitleFromUrl(url),
+             url,
       description: $('meta[property="og:description"]').attr('content') || 
                   $('meta[name="description"]').attr('content') || '',
       image: $('meta[property="og:image"]').attr('content') || 
