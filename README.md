@@ -1,9 +1,12 @@
-# Quick Notes
+# Box.Space
 
-A modern web application built with React and Vite for creating and managing notes quickly and efficiently.
+A web application built with [Windsurf AI](https://codeium.com/windsurf) for creating notes on the web quickly and efficiently.
+
+Live version: https://box-space.vercel.app
 
 ## Features
 
+- Automatically turn URLs into embed cards & YouTube links into embedded videos
 - Fast and responsive user interface
 - Modern React-based architecture
 - Server-side functionality with Express
